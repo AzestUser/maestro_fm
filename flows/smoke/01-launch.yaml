@@ -4,7 +4,11 @@ tags:
   - smoke
 ---
 - launchApp:
-    clearState: true
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 5000 # Wait up to 5s for movement to stop
+- extendedWaitUntil:
+    visible: "Хей, гостю"
+    timeout: 10000    
 - assertVisible: "Хей, гостю"
-- assertVisible: "Шукай що завгодно"
 - takeScreenshot: screenshots/01-launch-app

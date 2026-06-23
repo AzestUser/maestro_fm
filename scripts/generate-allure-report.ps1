@@ -340,13 +340,15 @@ function Add-VideoAttachmentsToReport {
                 }
             }
 
-            # --- Video attachment (HTML player) ---
+            # --- Video attachment (HTML player with base64) ---
             $videoPath = Get-RecordingFileForTest -TestName $testCase.Name -RecordingsRoot $RecordingsRoot
             if ($videoPath) {
                 $videoFileName = Split-Path -Leaf $videoPath
                 Copy-Item -Path $videoPath -Destination (Join-Path $attachmentsDir $videoFileName) -Force
+                $videoBytes = [System.IO.File]::ReadAllBytes($videoPath)
+                $videoBase64 = [System.Convert]::ToBase64String($videoBytes)
                 $htmlFileName = [System.IO.Path]::GetFileNameWithoutExtension($videoFileName) + '.html'
-                $htmlContent = "<!DOCTYPE html><html><body style='margin:0;background:#000'><video controls autoplay style='width:100%;max-height:100vh' src='$videoFileName'></video></body></html>"
+                $htmlContent = "<!DOCTYPE html><html><body style='margin:0;background:#000'><video controls autoplay style='width:100%;max-height:100vh'><source src='data:video/mp4;base64,$videoBase64' type='video/mp4'></video></body></html>"
                 Set-Content -Path (Join-Path $attachmentsDir $htmlFileName) -Value $htmlContent -Encoding utf8
                 $testJson.testStage.attachments += [pscustomobject]@{ source = $htmlFileName; type = 'text/html'; name = 'Video recording' }
                 Write-Host "Attached video $videoFileName to test '$($testCase.Name)'"
@@ -360,8 +362,12 @@ function Add-VideoAttachmentsToReport {
                 $screenshotPath = Get-ScreenshotForTest -TestName $testCase.Name -ScreenshotsRoot $ScreenshotsRoot -YamlFileName $yamlFileName
                 if ($screenshotPath) {
                     $screenshotFileName = Split-Path -Leaf $screenshotPath
-                    Copy-Item -Path $screenshotPath -Destination (Join-Path $attachmentsDir $screenshotFileName) -Force
-                    $testJson.testStage.attachments += [pscustomobject]@{ source = $screenshotFileName; type = 'image/png'; name = 'Screenshot' }
+                    $imgBytes = [System.IO.File]::ReadAllBytes($screenshotPath)
+                    $imgBase64 = [System.Convert]::ToBase64String($imgBytes)
+                    $screenshotHtmlName = [System.IO.Path]::GetFileNameWithoutExtension($screenshotFileName) + '-screenshot.html'
+                    $screenshotHtml = "<!DOCTYPE html><html><body style='margin:0;background:#000;display:flex;justify-content:center'><img src='data:image/png;base64,$imgBase64' style='max-width:100%;max-height:100vh'></body></html>"
+                    Set-Content -Path (Join-Path $attachmentsDir $screenshotHtmlName) -Value $screenshotHtml -Encoding utf8
+                    $testJson.testStage.attachments += [pscustomobject]@{ source = $screenshotHtmlName; type = 'text/html'; name = 'Screenshot' }
                     Write-Host "Attached screenshot $screenshotFileName to test '$($testCase.Name)'"
                 } else {
                     Write-Warning "No screenshot found for test '$($testCase.Name)'."
