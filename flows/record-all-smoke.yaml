@@ -14,3 +14,8 @@ tags:
     label: "Cart flow recording"
 - runFlow: smoke/02-cart.yaml
 - stopRecording
+- startRecording:
+    path: "recordings/smoke---empty-cart-to-promotions"
+    label: "Empty cart to promotions recording"
+- runFlow: smoke/03-promotions.yaml
+- stopRecording
