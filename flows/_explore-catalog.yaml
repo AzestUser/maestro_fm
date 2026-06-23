@@ -1,0 +1,12 @@
+appId: com.maudau
+---
+- runFlow: subflows/skip-onboarding.yaml
+- tapOn:
+    point: "30%,92%"
+- tapOn: "Продукти і напої"
+- tapOn: "Всі товари категорії"
+- extendedWaitUntil:
+    visible: ".*"
+    timeout: 15000
+- tapOn:
+    point: "25%,40%"

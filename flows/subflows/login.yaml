@@ -1,0 +1,11 @@
+appId: com.maudau
+name: Subflow - Login
+---
+# Adjust selectors to match the Maudau app UI.
+- launchApp
+- tapOn:
+    text: "Увійти"
+    optional: true
+- tapOn:
+    text: "Login"
+    optional: true

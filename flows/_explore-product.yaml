@@ -1,0 +1,11 @@
+appId: com.maudau
+---
+- runFlow: subflows/skip-onboarding.yaml
+- tapOn:
+    point: "26%,63%"
+- tapOn:
+    text: "Так"
+    optional: true
+- tapOn:
+    text: "Так"
+    optional: true

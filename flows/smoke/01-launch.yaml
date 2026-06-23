@@ -1,0 +1,8 @@
+appId: com.maudau
+name: 01 - Smoke - Launch app
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- takeScreenshot: screenshots/01-launch-app

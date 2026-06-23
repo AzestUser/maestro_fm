@@ -1,0 +1,219 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+        "label": "Start Maestro MCP",
+        "type": "shell",
+        "command": "C:\\maestro\\bin\\maestro.bat",
+        "args": [
+            "mcp"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+            }
+        }
+    },
+    {
+        "label": "Run smoke tests with recording",
+        "type": "shell",
+        "command": "C:\\maestro\\bin\\maestro.bat",
+        "args": [
+            "test",
+            "flows\\record-all-smoke.yaml"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+            }
+        }
+    },
+    {
+        "label": "Run smoke tests for Allure",
+        "type": "shell",
+        "command": "C:\\maestro\\bin\\maestro.bat",
+        "args": [
+            "test",
+            "--format",
+            "JUNIT",
+            "--output",
+            "allure-results/smoke.xml",
+            "flows\\smoke"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+            }
+        }
+    },
+    {
+        "label": "Generate Allure report",
+        "type": "shell",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            ".\\scripts\\generate-allure-report.ps1"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+            }
+        }
+    },
+    {
+        "label": "Generate Allure report with CLI path",
+        "type": "shell",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            ".\\scripts\\generate-allure-report.ps1",
+            "-AllureCliPath",
+            "${input:allureCliPath}"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+            }
+        }
+    },
+    {
+        "label": "Run smoke tests and open Allure report",
+        "type": "shell",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { C:\\maestro\\bin\\maestro.bat test --format JUNIT --output allure-results/smoke.xml flows\\smoke; .\\scripts\\generate-allure-report.ps1 }"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": true,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1",
+                "PYTHONIOENCODING": "utf-8"
+            }
+        }    },
+    {
+        "label": "Run smoke tests and generate Allure report with CLI path",
+        "type": "shell",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { C:\\maestro\\bin\\maestro.bat test --format JUNIT --output allure-results/smoke.xml flows\\smoke; .\\scripts\\generate-allure-report.ps1 -AllureCliPath '${input:allureCliPath}' }"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": true,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1",
+                "PYTHONIOENCODING": "utf-8"
+            }
+        }    },
+    {
+        "label": "Run smoke tests with recording and Allure report",
+        "type": "shell",
+        "command": "powershell.exe",
+        "args": [
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; & { C:\\maestro\\bin\\maestro.bat test flows\\record-all-smoke.yaml; C:\\maestro\\bin\\maestro.bat test --format JUNIT --output allure-results/smoke.xml flows\\smoke; .\\scripts\\generate-allure-report.ps1 }"
+        ],
+        "problemMatcher": [],
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": true,
+            "panel": "dedicated",
+            "showReuseMessage": true,
+            "clear": false
+        },
+        "options": {
+            "env": {
+                "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1",
+                "PYTHONIOENCODING": "utf-8",
+                "LANG": "uk_UA.UTF-8"
+            }
+        }    }
+  ],
+  "inputs": [
+    {
+      "id": "allureCliPath",
+      "type": "promptString",
+      "description": "Enter the full path to allure.bat or allure.exe",
+      "default": "C:\\Program Files\\allure\\bin\\allure.bat"
+    }
+  ]
+}
+

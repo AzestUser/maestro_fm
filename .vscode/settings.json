@@ -1,0 +1,11 @@
+{
+  "claude.mcp.servers": {
+    "maestro": {
+      "command": "C:\\maestro\\bin\\maestro.bat",
+      "args": ["mcp"],
+      "env": {
+        "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
+      }
+    }
+  }
+}

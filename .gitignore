@@ -1,0 +1,16 @@
+# Generated artifacts
+allure-report/
+allure-results/
+recordings/*
+!recordings/.gitkeep
+screenshots/*
+!screenshots/.gitkeep
+
+
+# Apps
+apps/*.apk
+apps/*.aab
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+appId: com.maudau
+name: Record all smoke tests
+tags:
+  - smoke
+  - recording
+---
+- startRecording:
+    path: "recordings/smoke---launch-app"
+    label: "Launch app recording"
+- runFlow: smoke/01-launch.yaml
+- stopRecording
+- startRecording:
+    path: "recordings/smoke---cart-flow-via-subflows"
+    label: "Cart flow recording"
+- runFlow: smoke/02-cart.yaml
+- stopRecording

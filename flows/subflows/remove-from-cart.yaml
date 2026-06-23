@@ -1,0 +1,4 @@
+appId: com.maudau
+---
+- tapOn: "Remove Item"
+- tapOn: "Видалити"

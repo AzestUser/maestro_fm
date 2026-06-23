@@ -1,0 +1,6 @@
+appId: com.maudau
+name: Regression - App opens
+tags:
+  - regression
+---
+- runFlow: ../subflows/login.yaml

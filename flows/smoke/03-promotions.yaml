@@ -1,0 +1,36 @@
+appId: com.maudau
+name: 03 - Smoke - Empty cart to promotions
+tags:
+  - smoke
+  - cart
+  - promotions
+---
+- runFlow: ../subflows/skip-onboarding.yaml
+- tapOn: "Кошик"
+
+# Перевірка порожнього кошика
+- assertVisible: "Тут поки порожньо…"
+- assertVisible: "До Акцій"
+
+# Перехід до Акцій
+- tapOn: "До Акцій"
+- assertVisible: "Акції"
+- assertVisible: "Всі"
+
+# Перевірка що є хоча б 1 акція
+- assertVisible: ".*Залишилось:.*"
+
+# Скрол вниз 3 рази
+- scroll
+- scroll
+- scroll
+
+# Скрол вгору
+- swipe:
+    direction: UP
+
+# Повернення назад через стрілку
+- back
+- assertVisible: "Тут поки порожньо…"
+- assertVisible: "До Акцій"
+- takeScreenshot: screenshots/03-empty-cart-to-promotions

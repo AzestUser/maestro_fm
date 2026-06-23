@@ -1,0 +1,13 @@
+appId: com.maudau
+name: 02 - Smoke - Cart flow via subflows
+tags:
+  - smoke
+  - cart
+---
+- runFlow: ../subflows/skip-onboarding.yaml
+- runFlow: ../subflows/add-random-product.yaml
+- tapOn: "Кошик"
+- assertVisible: "Оформити"
+- runFlow: ../subflows/remove-from-cart.yaml
+- assertVisible: "До Акцій"
+- takeScreenshot: screenshots/02-cart-flow
