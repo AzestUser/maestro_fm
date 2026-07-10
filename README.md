@@ -1,4 +1,4 @@
-# Maestro Mobile Test Framework — MAUDAU
+# Maestro Mobile and Web Test Framework — MAUDAU
 
 [🇺🇦 Українська](#українська) | [🇬🇧 English](#english)
 
