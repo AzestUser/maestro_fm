@@ -1,0 +1,6 @@
+# Maestro configuration file
+# Environment variables for all flows
+
+env:
+  WEB_BASE_URL: "https://maudau.com.ua"
+  APP_ID: "com.maudau"

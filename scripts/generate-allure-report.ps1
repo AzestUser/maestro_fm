@@ -2,6 +2,8 @@ param(
     [string]$AllureCliPath
 )
 
+$ErrorActionPreference = "Stop"
+
 $timestamp = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
 $resultsDir = Join-Path $PSScriptRoot "..\allure-results"
 $reportRoot = Join-Path $PSScriptRoot "..\allure-report"
@@ -107,10 +109,34 @@ if (-not (Test-Path $resultsDir)) {
     exit 1
 }
 
+function Fix-GarbledUTF8 {
+    param([string]$Text)
+    
+    if (-not $Text) { return $Text }
+    
+    try {
+        # Якщо текст містить mojibake (garbled UTF-8 as Latin-1), спробуємо його виправити
+        # Конвертуємо текст назад через байти
+        $bytes = [System.Text.Encoding]::GetEncoding('ISO-8859-1').GetBytes($Text)
+        $fixedText = [System.Text.Encoding]::UTF8.GetString($bytes)
+        
+        # Перевіримо, чи виглядає результат краще
+        # Використовуємо character codes замість直接 Cyrillic символів в regex
+        if ($fixedText -match '[\u0430-\u044F\u0456\u0457\u0454\u0491\u0410-\u0429\u0406\u0407\u0404\u0490]') {
+            return $fixedText
+        }
+    } catch {
+        # Якщо конверсія не сработала, повертаємо оригінальний текст
+    }
+    
+    return $Text
+}
+
 function Get-YamlSteps {
     param([string]$YamlPath, [string]$FlowsDir)
     if (-not (Test-Path $YamlPath)) { return @() }
-    $lines = Get-Content $YamlPath -Encoding UTF8
+    # Read YAML with explicit UTF-8 encoding
+    $lines = [System.IO.File]::ReadAllLines($YamlPath, [System.Text.Encoding]::UTF8)
     $steps = @()
     $inBody = $false
     foreach ($line in $lines) {
@@ -118,6 +144,8 @@ function Get-YamlSteps {
         if (-not $inBody) { continue }
         if ($line -match '^- (.+)') {
             $stepName = $Matches[1].Trim()
+            # Fix garbled UTF-8 in step names
+            $stepName = Fix-GarbledUTF8 -Text $stepName
             $subSteps = @()
             if ($stepName -match '^runFlow:\s*(.+)') {
                 $subflowRelPath = $Matches[1].Trim()
@@ -136,26 +164,35 @@ function Build-AllureSteps {
     param([array]$Steps, [long]$StartTime, [string]$FailureMessage, [ref]$FailedMarked)
     $result = @()
     $t = $StartTime
+    $stepDuration = 1000  # 1 second per step
     foreach ($step in $Steps) {
         $subStepsBuilt = @()
         if ($step.subSteps -and $step.subSteps.Count -gt 0) {
             $subStepsBuilt = Build-AllureSteps -Steps $step.subSteps -StartTime $t -FailureMessage $FailureMessage -FailedMarked $FailedMarked
+            # Calculate actual duration from substeps
+            if ($subStepsBuilt.Count -gt 0) {
+                $lastSubstep = $subStepsBuilt[-1]
+                $stepDuration = $lastSubstep.stop - $t
+            }
         }
-        $stepStop = $t + 100
-        if ($FailedMarked.Value) {
-            $stepStatus = 'skipped'
-        } elseif ($FailureMessage) {
-            # Extract quoted value from step name: assertVisible: "Залишилось:" -> Залишилось:
-            $stepKey = $step.name -replace '^\w+:\s*"?([^"]+)"?\s*$', '$1'
-            if ($FailureMessage -match [regex]::Escape($stepKey)) {
+        $stepStop = $t + $stepDuration
+        $stepStatus = 'passed'
+        
+        if (-not $FailedMarked.Value -and $FailureMessage) {
+            # Extract the step key (e.g., "До Акцій" from "tapOn: \"До Акцій\"")
+            $stepKey = $step.name -replace '^[^:]+:\s*"?([^"]+)"?.*$', '$1'
+            $stepKey = $stepKey.Trim()
+            
+            # Compare using proper UTF-8 encoding with StringComparison
+            $comparisonResult = [System.Globalization.CultureInfo]::InvariantCulture.CompareInfo.IndexOf($FailureMessage, $stepKey, [System.Globalization.CompareOptions]::IgnoreCase)
+            if ($comparisonResult -ge 0) {
                 $stepStatus = 'failed'
                 $FailedMarked.Value = $true
-            } else {
-                $stepStatus = 'passed'
             }
-        } else {
-            $stepStatus = 'passed'
+        } elseif ($FailedMarked.Value) {
+            $stepStatus = 'skipped'
         }
+        
         $result += [pscustomobject]@{
             name = $step.name
             status = $stepStatus
@@ -184,15 +221,31 @@ function Get-ScreenshotForTest {
             Select-Object -First 1
         if ($match) { return $match.FullName }
     }
-    # Fallback: match by sanitized test name
-    $nameBase = $TestName -replace '^\d+\s*-\s*', ''
-    $nameBase = $nameBase -replace '[^\p{L}\p{N}\-_ ]', ''
-    $nameBase = $nameBase.Trim() -replace '\s+', '-'
-    $nameBase = $nameBase.ToLowerInvariant()
+    # Fallback: match by sanitized test name (using same logic as video file matching)
+    $nameBase = Sanitize-VideoFileName -TestName $TestName
+    $match = Get-ChildItem -Path $ScreenshotsRoot -Filter "$nameBase.png" -File -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($match) { return $match.FullName }
+    # Another fallback: search by partial match
     $match = Get-ChildItem -Path $ScreenshotsRoot -Filter '*.png' -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match [regex]::Escape($nameBase) } |
         Select-Object -First 1
-    return $match?.FullName
+    if ($match) { return $match.FullName }
+    # Handle web prefix: try with "web-" prefix
+    if ($TestName -match 'web' -or $TestName -match 'Web') {
+        $match = Get-ChildItem -Path $ScreenshotsRoot -Filter "web-*.png" -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match [regex]::Escape($nameBase) } |
+            Select-Object -First 1
+        if ($match) { return $match.FullName }
+        # Try prefix match: web-01-launch for "smoke-launch-app"
+        $prefix = if ($YamlFileName -match '^(\d+)') { $Matches[1] } else { $null }
+        if ($prefix) {
+            $match = Get-ChildItem -Path $ScreenshotsRoot -Filter "web-$prefix-*.png" -File -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($match) { return $match.FullName }
+        }
+    }
+    return $null
 }
 
 function Sanitize-VideoFileName {
@@ -214,7 +267,9 @@ function Get-RecordingFileForTest {
         [string]$RecordingsRoot
     )
 
+    Write-Host "Searching for video for test: $TestName in $RecordingsRoot"
     $nameBase = Sanitize-VideoFileName -TestName $TestName
+    Write-Host "Sanitized name base: $nameBase"
     $candidateNames = @(
         "$nameBase.mp4",
         "01-$nameBase.mp4",
@@ -223,9 +278,36 @@ function Get-RecordingFileForTest {
         "smoke-all.mp4"
     )
 
+    # First search in subdirectories (mobile/, web/)
+    foreach ($subDir in @('mobile', 'web')) {
+        $subPath = Join-Path $RecordingsRoot $subDir
+        Write-Host "Checking subpath: $subPath"
+        if (Test-Path $subPath) {
+            foreach ($candidate in $candidateNames) {
+                $path = Join-Path $subPath $candidate
+                Write-Host "  Checking: $path"
+                if (Test-Path $path) {
+                    Write-Host "  Found: $path"
+                    return $path
+                }
+            }
+            $match = Get-ChildItem -Path $subPath -Filter '*.mp4' -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match [regex]::Escape($nameBase) } |
+                Select-Object -First 1
+            if ($match) { 
+                Write-Host "  Found via regex: $($match.FullName)"
+                return $match.FullName 
+            }
+        }
+    }
+
+    # Fallback to root recordings directory
+    Write-Host "Checking root recordings directory"
     foreach ($candidate in $candidateNames) {
         $path = Join-Path $RecordingsRoot $candidate
+        Write-Host "  Checking: $path"
         if (Test-Path $path) {
+            Write-Host "  Found: $path"
             return $path
         }
     }
@@ -233,7 +315,12 @@ function Get-RecordingFileForTest {
     $match = Get-ChildItem -Path $RecordingsRoot -Filter '*.mp4' -File -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match [regex]::Escape($nameBase) } |
         Select-Object -First 1
-    return $match?.FullName
+    if ($match) {
+        Write-Host "  Found via regex in root: $($match.FullName)"
+        return $match.FullName
+    }
+    Write-Host "  No video found"
+    return $null
 }
 
 function Add-VideoAttachmentsToReport {
@@ -263,7 +350,9 @@ function Add-VideoAttachmentsToReport {
     $testCases = @()
     foreach ($xmlFile in $xmlFiles) {
         try {
-            [xml]$xml = Get-Content $xmlFile.FullName -Raw
+            # Read with explicit UTF-8 encoding - use System.IO for more reliable handling
+            $xmlContent = [System.IO.File]::ReadAllText($xmlFile.FullName, [System.Text.Encoding]::UTF8)
+            [xml]$xml = $xmlContent
         } catch {
             Write-Warning "Failed to parse XML file $($xmlFile.FullName): $_"
             continue
@@ -289,14 +378,30 @@ function Add-VideoAttachmentsToReport {
                         $duration = 0.0
                     }
                 }
+                
+                # Ensure failure message is properly handled as UTF-8
+                $failureMsg = ''
+                if ($case.failure) { 
+                    if ($case.failure -is [string]) { 
+                        $failureMsg = $case.failure 
+                    } else { 
+                        $failureMsg = $case.failure.InnerText 
+                    }
+                } elseif ($case.error) { 
+                    if ($case.error -is [string]) { 
+                        $failureMsg = $case.error 
+                    } else { 
+                        $failureMsg = $case.error.InnerText 
+                    }
+                }
+                
+                # Fix garbled UTF-8 if needed
+                $failureMsg = Fix-GarbledUTF8 -Text $failureMsg
+                
                 $testCases += [pscustomobject]@{
                     Name = $case.name
                     Duration = $duration
-                    FailureMessage = if ($case.failure) { 
-                        if ($case.failure -is [string]) { $case.failure } else { $case.failure.InnerText }
-                    } elseif ($case.error) { 
-                        if ($case.error -is [string]) { $case.error } else { $case.error.InnerText }
-                    } else { '' }
+                    FailureMessage = $failureMsg
                 }
             }
         }
@@ -325,18 +430,64 @@ function Add-VideoAttachmentsToReport {
             # --- Steps from yaml ---
             if ($FlowsDir) {
                 $sanitized = Sanitize-VideoFileName -TestName $testCase.Name
-                $yamlFile = Get-ChildItem -Path (Join-Path $FlowsDir 'smoke') -Filter '*.yaml' -File -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Name -match $sanitized -or (Get-Content $_.FullName -Raw) -match [regex]::Escape($testCase.Name) } |
-                    Select-Object -First 1
+                # Search in both mobile and web smoke directories
+                $yamlFile = $null
+                foreach ($subDir in @('mobile\smoke', 'web\smoke', 'smoke')) {
+                    $searchPath = Join-Path $FlowsDir $subDir
+                    if (Test-Path $searchPath) {
+                        $found = Get-ChildItem -Path $searchPath -Filter '*.yaml' -File -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -match $sanitized -or (Get-Content $_.FullName -Raw) -match [regex]::Escape($testCase.Name) } |
+                            Select-Object -First 1
+                        if ($found) {
+                            $yamlFile = $found
+                            break
+                        }
+                    }
+                }
                 if ($yamlFile) {
-                    $startMs = [long]($testJson.time.start)
-                    if (-not $startMs) { $startMs = [long](Get-Date -UFormat %s) * 1000 }
+                    $startMs = $null
+                    if ($testJson.time -and $testJson.time.start) {
+                        try { $startMs = [long]$testJson.time.start } catch { $startMs = $null }
+                    }
+                    if (-not $startMs) {
+                        $startMs = [long]([DateTimeOffset]::Now.ToUnixTimeMilliseconds())
+                    }
                     $yamlSteps = Get-YamlSteps -YamlPath $yamlFile.FullName -FlowsDir $FlowsDir
                     $failedMarked = [ref]$false
                     $stepsArray = Build-AllureSteps -Steps $yamlSteps -StartTime $startMs -FailureMessage $testCase.FailureMessage -FailedMarked $failedMarked
                     Write-Host "Test '$($testCase.Name)' failure: '$($testCase.FailureMessage)'"
+
+                    # Capture last step stop in milliseconds
+                    $lastStepStopMs = $null
+                    if ($stepsArray -and $stepsArray.Count -gt 0) { $lastStepStopMs = [long]$stepsArray[-1].stop }
+
                     $testJson.testStage.steps = $stepsArray
                     $testJson.testStage.stepsCount = $stepsArray.Count
+
+                    # Ensure top-level numeric start/stop timestamps exist so Allure UI can show step times
+                    # Compute stopMs: prefer original duration-based stop, but ensure it covers last step
+                    # Compute stop in milliseconds by taking max(original stop, last step stop)
+                    $origStop = $null
+                    if ($testJson.time -and $testJson.time.duration) {
+                        try { $dur = [long]$testJson.time.duration; $origStop = [long]($startMs + $dur) } catch { $origStop = $null }
+                    }
+
+                    if ($origStop -and $lastStepStopMs) {
+                        $stopMs = [long]([Math]::Max($origStop, $lastStepStopMs))
+                    } elseif ($origStop) {
+                        $stopMs = [long]$origStop
+                    } elseif ($lastStepStopMs) {
+                        $stopMs = [long]$lastStepStopMs
+                    } else {
+                        $stopMs = [long]$startMs
+                    }
+
+                    # Write test-level times in milliseconds (Allure default)
+                    $newTime = @{ start = [long]$startMs; stop = [long]$stopMs }
+                    $newTime.duration = [long]($newTime.stop - $newTime.start)
+
+                    # Replace the time object with a simple hashtable so properties are writable
+                    $testJson.time = $newTime
                 }
             }
 
@@ -344,14 +495,19 @@ function Add-VideoAttachmentsToReport {
             $videoPath = Get-RecordingFileForTest -TestName $testCase.Name -RecordingsRoot $RecordingsRoot
             if ($videoPath) {
                 $videoFileName = Split-Path -Leaf $videoPath
-                Copy-Item -Path $videoPath -Destination (Join-Path $attachmentsDir $videoFileName) -Force
+                # Use subdirectory name as prefix (e.g., "mobile-smoke---launch-app.mp4")
+                $parentDir = Split-Path -Leaf (Split-Path $videoPath -Parent)
+                $prefix = if ($parentDir -in @('mobile', 'web')) { "$parentDir-" } else { "" }
+                $newVideoFileName = $prefix + $videoFileName
+                $destVideoPath = Join-Path $attachmentsDir $newVideoFileName
+                Copy-Item -Path $videoPath -Destination $destVideoPath -Force
                 $videoBytes = [System.IO.File]::ReadAllBytes($videoPath)
                 $videoBase64 = [System.Convert]::ToBase64String($videoBytes)
-                $htmlFileName = [System.IO.Path]::GetFileNameWithoutExtension($videoFileName) + '.html'
+                $htmlFileName = [System.IO.Path]::GetFileNameWithoutExtension($newVideoFileName) + '.html'
                 $htmlContent = "<!DOCTYPE html><html><body style='margin:0;background:#000'><video controls autoplay style='width:100%;max-height:100vh'><source src='data:video/mp4;base64,$videoBase64' type='video/mp4'></video></body></html>"
                 Set-Content -Path (Join-Path $attachmentsDir $htmlFileName) -Value $htmlContent -Encoding utf8
                 $testJson.testStage.attachments += [pscustomobject]@{ source = $htmlFileName; type = 'text/html'; name = 'Video recording' }
-                Write-Host "Attached video $videoFileName to test '$($testCase.Name)'"
+                Write-Host "Attached video $newVideoFileName to test '$($testCase.Name)'"
             } else {
                 Write-Warning "No recording found for test '$($testCase.Name)'. Skipping video attachment."
             }
@@ -359,24 +515,73 @@ function Add-VideoAttachmentsToReport {
             # --- Screenshot attachment ---
             if ($ScreenshotsRoot) {
                 $yamlFileName = if ($yamlFile) { $yamlFile.Name } else { '' }
-                $screenshotPath = Get-ScreenshotForTest -TestName $testCase.Name -ScreenshotsRoot $ScreenshotsRoot -YamlFileName $yamlFileName
-                if ($screenshotPath) {
-                    $screenshotFileName = Split-Path -Leaf $screenshotPath
-                    $imgBytes = [System.IO.File]::ReadAllBytes($screenshotPath)
-                    $imgBase64 = [System.Convert]::ToBase64String($imgBytes)
-                    $screenshotHtmlName = [System.IO.Path]::GetFileNameWithoutExtension($screenshotFileName) + '-screenshot.html'
-                    $screenshotHtml = "<!DOCTYPE html><html><body style='margin:0;background:#000;display:flex;justify-content:center'><img src='data:image/png;base64,$imgBase64' style='max-width:100%;max-height:100vh'></body></html>"
-                    Set-Content -Path (Join-Path $attachmentsDir $screenshotHtmlName) -Value $screenshotHtml -Encoding utf8
-                    $testJson.testStage.attachments += [pscustomobject]@{ source = $screenshotHtmlName; type = 'text/html'; name = 'Screenshot' }
-                    Write-Host "Attached screenshot $screenshotFileName to test '$($testCase.Name)'"
+                
+                # Determine platform (mobile or web)
+                $platform = ""
+                if ($testCase.Name -match 'Mobile' -or $testCase.Name -match 'mobile') {
+                    $platform = "mobile"
+                } elseif ($testCase.Name -match 'Web' -or $testCase.Name -match 'web') {
+                    $platform = "web"
+                }
+                
+                # Get ALL screenshots matching platform and test number
+                $screenshotPattern = ""
+                if ($yamlFileName -match '^(\d+)') {
+                    $prefix = $Matches[1]
+                    # Build pattern: "mobile-01-*" or "web-01-*"
+                    if ($platform) {
+                        $screenshotPattern = "$platform-$prefix-*.png"
+                    } else {
+                        $screenshotPattern = "$prefix-*.png"
+                    }
                 } else {
-                    Write-Warning "No screenshot found for test '$($testCase.Name)'."
+                    $nameBase = Sanitize-VideoFileName -TestName $testCase.Name
+                    if ($platform) {
+                        $screenshotPattern = "$platform-$nameBase*.png"
+                    } else {
+                        $screenshotPattern = "$nameBase*.png"
+                    }
+                }
+                
+                Write-Host "Searching for screenshots with pattern: $screenshotPattern in $ScreenshotsRoot"
+                $screenshots = Get-ChildItem -Path $ScreenshotsRoot -Filter $screenshotPattern -File -ErrorAction SilentlyContinue
+                
+                if ($screenshots) {
+                    if ($screenshots -is [Array]) {
+                        $screenshots = $screenshots | Sort-Object Name
+                    } else {
+                        $screenshots = @($screenshots)
+                    }
+                    
+                    foreach ($screenshotPath in $screenshots) {
+                        $screenshotFileName = $screenshotPath.Name
+                        $imgBytes = [System.IO.File]::ReadAllBytes($screenshotPath.FullName)
+                        $imgBase64 = [System.Convert]::ToBase64String($imgBytes)
+                        $screenshotHtmlName = [System.IO.Path]::GetFileNameWithoutExtension($screenshotFileName) + '-screenshot.html'
+                        $screenshotHtml = "<!DOCTYPE html><html><body style='margin:0;background:#000;display:flex;justify-content:center'><img src='data:image/png;base64,$imgBase64' style='max-width:100%;max-height:100vh'></body></html>"
+                        Set-Content -Path (Join-Path $attachmentsDir $screenshotHtmlName) -Value $screenshotHtml -Encoding utf8
+                        $testJson.testStage.attachments += [pscustomobject]@{ source = $screenshotHtmlName; type = 'text/html'; name = "Screenshot: $screenshotFileName" }
+                        Write-Host "Attached screenshot $screenshotFileName to test '$($testCase.Name)'"
+                    }
+                } else {
+                    Write-Warning "No screenshots found for test '$($testCase.Name)'. Pattern: $screenshotPattern"
                 }
             }
 
             $testJson.testStage.attachmentsCount = $testJson.testStage.attachments.Count
             $testJson.testStage.hasContent = $true
-            $testJson | ConvertTo-Json -Depth 10 | Set-Content -Path $file.FullName -Encoding utf8
+            
+            # Fix: Ensure numbers are serialized as numbers, not strings
+            $jsonOutput = $testJson | ConvertTo-Json -Depth 10
+            
+            # Manually fix any string numbers that should be actual numbers
+            $jsonOutput = $jsonOutput -replace '"start":\s*"(\d+)"', '"start": $1'
+            $jsonOutput = $jsonOutput -replace '"stop":\s*"(\d+)"', '"stop": $1'
+            $jsonOutput = $jsonOutput -replace '"stepsCount":\s*"(\d+)"', '"stepsCount": $1'
+            $jsonOutput = $jsonOutput -replace '"attachmentsCount":\s*"(\d+)"', '"attachmentsCount": $1'
+            
+            Set-Content -Path $file.FullName -Value $jsonOutput -Encoding utf8
+            Write-Host "Updated test case: $($testCase.Name) with UTF-8 encoding"
             break
         }
     }
@@ -406,5 +611,9 @@ if ($recordingFiles) {
     Add-VideoAttachmentsToReport -RecordingsRoot $recordingsRoot -ReportDir $reportDir -ResultsDir $resultsDir -FlowsDir $flowsDir -ScreenshotsRoot $screenshotsRoot
 }
 
-Write-Host "Opening Allure report..."
-& $allureExe open $reportDir
+if (-not $env:SKIP_ALLURE_OPEN) {
+    Write-Host "Opening Allure report..."
+    & $allureExe open $reportDir
+} else {
+    Write-Host "Environment variable SKIP_ALLURE_OPEN is set; skipping opening the report."
+}

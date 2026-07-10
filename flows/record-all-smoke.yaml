@@ -1,21 +1,7 @@
-appId: com.maudau
-name: Record all smoke tests
+name: Record all smoke tests (mobile + web)
 tags:
   - smoke
   - recording
 ---
-- startRecording:
-    path: "recordings/smoke---launch-app"
-    label: "Launch app recording"
-- runFlow: smoke/01-launch.yaml
-- stopRecording
-- startRecording:
-    path: "recordings/smoke---cart-flow-via-subflows"
-    label: "Cart flow recording"
-- runFlow: smoke/02-cart.yaml
-- stopRecording
-- startRecording:
-    path: "recordings/smoke---empty-cart-to-promotions"
-    label: "Empty cart to promotions recording"
-- runFlow: smoke/03-promotions.yaml
-- stopRecording
+- runFlow: record-mobile-smoke.yaml
+- runFlow: record-web-smoke.yaml

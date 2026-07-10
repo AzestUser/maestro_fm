@@ -1,0 +1,24 @@
+name: 03 - Web Smoke - Promotions
+tags:
+  - web
+  - smoke
+  - promotions
+url: "https://maudau.com.ua/"
+---
+- runFlow: ../subflows/open-site.yaml
+
+# Перехід до Акцій
+- tapOn: "До Акцій"
+- assertVisible: "Акції"
+- assertVisible: "Всі"
+
+# Скрол для перегляду акцій
+- scroll
+- scroll
+- scroll
+
+# Скрол вгору
+- swipe:
+    direction: UP
+
+- takeScreenshot: screenshots/web-03-promotions

@@ -1,0 +1,19 @@
+name: Record web smoke tests
+tags:
+  - smoke
+  - recording
+  - web
+url: "https://maudau.com.ua/"
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 2000
+- openLink: "https://maudau.com.ua"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Головна"
+- runFlow: web/smoke/01-catalog.yaml
+- runFlow: web/smoke/02-cart.yaml
+- runFlow: web/smoke/03-promotions.yaml
+- runFlow: web/smoke/04-search.yaml

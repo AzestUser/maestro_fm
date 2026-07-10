@@ -1,0 +1,21 @@
+appId: com.maudau
+name: 01 - Mobile Smoke - Launch app and navigate to catalog
+tags:
+  - smoke
+  - catalog
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 5000 # Wait up to 5s for movement to stop
+- extendedWaitUntil:
+    visible: "Хей, гостю"
+    timeout: 10000
+- assertVisible: "Хей, гостю"
+- takeScreenshot: screenshots/mobile-01-launch-app
+
+# Перехід до каталогу
+- tapOn: "Каталог"
+- assertVisible: "Продукти і напої"
+- assertVisible: "Побутова хімія"
+- takeScreenshot: screenshots/mobile-01-launch-catalog

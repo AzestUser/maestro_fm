@@ -1,7 +1,0 @@
-appId: com.maudau
----
-- tapOn: "Remove Item"
-- tapOn:
-    text: "Видалити"
-    index: 0
-- assertVisible: "Тут поки"

@@ -1,0 +1,13 @@
+name: 02 - Web Smoke - Cart
+tags:
+  - web
+  - smoke
+  - cart
+url: "https://maudau.com.ua/"
+---
+- runFlow: ../subflows/open-site.yaml
+
+# Перехід до кошика
+- tapOn: "Кошик"
+- assertVisible: "Кошик"
+- takeScreenshot: screenshots/web-02-cart

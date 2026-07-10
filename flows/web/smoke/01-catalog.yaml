@@ -1,0 +1,29 @@
+name: 01 - Web Smoke - Launch and navigate menu
+tags:
+  - web
+  - smoke
+  - menu
+url: "https://maudau.com.ua/"
+---
+- runFlow: ../subflows/open-site.yaml
+
+# Натиск на "Меню"
+- tapOn:
+    id: "Каталог"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible: "Алкоголь"
+- takeScreenshot: screenshots/web-01-menu-opened
+
+# Скрол в бічній панелі меню 
+
+- scrollUntilVisible:
+    element: "Енергонезалежність"
+
+- takeScreenshot: screenshots/web-01-menu-scrolled
+
+# Закриття меню
+- back
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: screenshots/web-01-menu-closed

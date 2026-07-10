@@ -1,0 +1,12 @@
+url: "https://maudau.com.ua/"
+name: Open Site
+
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 2000
+- openLink: "https://maudau.com.ua"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible: "Головна"

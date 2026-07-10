@@ -1,5 +1,5 @@
 appId: com.maudau
-name: 03 - Smoke - Empty cart to promotions
+name: 03 - Mobile Smoke - Empty cart to promotions
 tags:
   - smoke
   - cart
@@ -33,4 +33,4 @@ tags:
 - back
 - assertVisible: "Тут поки порожньо…"
 - assertVisible: "До Акцій"
-- takeScreenshot: screenshots/03-empty-cart-to-promotions
+- takeScreenshot: screenshots/mobile-03-empty-cart-to-promotions

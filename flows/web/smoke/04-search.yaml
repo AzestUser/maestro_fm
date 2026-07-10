@@ -1,0 +1,58 @@
+name: 04 - Web Smoke - Search
+tags:
+  - web
+  - smoke
+  - search
+url: "https://maudau.com.ua/"
+---
+- runFlow: ../subflows/open-site.yaml
+
+# Wait for search to be active and keyboard to appear
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Клік на пошук
+- tapOn:
+    id: "Пошук"
+
+
+
+# Take screenshot to verify field is focused
+- takeScreenshot: screenshots/web-04-search-focused
+
+# Clear any text
+- pressKey: Backspace
+
+# Wait a bit
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- tapOn:
+    point: 87%,8%
+
+- pressKey: Backspace
+
+- tapOn: "Пошук"
+
+
+# Type search term
+- inputText: "coffee"
+
+
+
+# Wait a bit
+- waitForAnimationToEnd:
+    timeout: 500
+
+
+# Take screenshot with typed query
+- takeScreenshot: screenshots/web-04-search-typed
+
+# Submit search
+- pressKey: Enter
+
+# Wait for results
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: screenshots/web-04-search-results

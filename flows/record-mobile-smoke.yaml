@@ -1,0 +1,10 @@
+appId: com.maudau
+name: Record mobile smoke tests
+tags:
+  - smoke
+  - recording
+  - mobile
+---
+- runFlow: mobile/smoke/01-launch.yaml
+- runFlow: mobile/smoke/02-cart.yaml
+- runFlow: mobile/smoke/03-promotions.yaml

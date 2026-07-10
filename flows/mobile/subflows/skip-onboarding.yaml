@@ -8,9 +8,9 @@ appId: com.maudau
 - tapOn:
     text: "Продовжити без авторизації"
     optional: true
-- tapOn:
-    text: "Пропустити"
-    optional: true
-- tapOn:
-    text: "Не зараз"
-    optional: true
+#- tapOn:
+#    text: "Пропустити"
+#    optional: true
+#- tapOn:
+#    text: "Не зараз"
+#    optional: true

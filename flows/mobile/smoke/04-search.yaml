@@ -1,0 +1,65 @@
+appId: com.maudau
+name: 04 - Mobile Smoke - Search
+tags:
+  - smoke
+  - search
+---
+# Launch app using existing flow
+- runFlow: ../subflows/skip-onboarding.yaml
+
+# Take screenshot of home screen
+- takeScreenshot: screenshots/mobile-04-home-screen
+
+# Tap on search input field
+- tapOn:
+    text: "Шукай що завгодно"
+
+# Wait for search to be active and keyboard to appear
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Take screenshot to verify field is focused
+- takeScreenshot: screenshots/mobile-04-search-focused
+
+# Clear any text
+- pressKey: Backspace
+
+# Wait a bit
+- waitForAnimationToEnd:
+    timeout: 500
+
+# Type search term character by character
+- inputText: "c"
+- inputText: "o"
+- inputText: "f"
+- inputText: "f"
+- inputText: "e"
+- inputText: "e"
+
+# Take screenshot with typed query
+- takeScreenshot: screenshots/mobile-04-search-typed
+
+# Submit search
+- pressKey: Enter
+
+# Wait for results to load
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Take screenshot of search results
+- takeScreenshot: screenshots/mobile-04-search-results
+
+# Verify results contain something (product cards should be visible)
+- assertVisible:
+    text: "95 ₴"
+
+# Cleqn search
+- tapOn:
+    point: 90%,11%
+
+# Wait a bit
+- waitForAnimationToEnd:
+    timeout: 500
+
+- assertNotVisible:
+    text: "95 ₴"

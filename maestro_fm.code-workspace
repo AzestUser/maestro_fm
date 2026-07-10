@@ -3,5 +3,8 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"chat.mcp.assisted.nuget.enabled": true
+	}
 }

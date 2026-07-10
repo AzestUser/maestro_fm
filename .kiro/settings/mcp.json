@@ -1,5 +1,5 @@
 {
-  "claude.mcp.servers": {
+  "mcpServers": {
     "maestro": {
       "command": "C:\\maestro\\bin\\maestro.bat",
       "args": ["mcp"],
@@ -7,9 +7,5 @@
         "JAVA_HOME": "C:\\Users\\asukhomlyn\\Tools\\jdk-26.0.1"
       }
     }
-  },
-  "chat.mcp.serverSampling": {
-    
-
   }
 }

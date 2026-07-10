@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_35" tests="1" failures="0" time="50.0">
+    <testcase id="04 - Mobile Smoke - Search" name="04 - Mobile Smoke - Search" classname="04 - Mobile Smoke - Search" time="50.0" status="SUCCESS">
+      <properties>
+        <property name="tags" value="smoke, search"/>
+      </properties>
+    </testcase>
+  </testsuite>
+</testsuites>

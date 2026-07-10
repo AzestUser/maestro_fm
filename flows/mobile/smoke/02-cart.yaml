@@ -1,5 +1,5 @@
 appId: com.maudau
-name: 02 - Smoke - Cart flow via subflows
+name: 02 - Mobile Smoke - Cart flow via subflows
 tags:
   - smoke
   - cart
@@ -10,4 +10,4 @@ tags:
 - assertVisible: "Оформити"
 - runFlow: ../subflows/remove-from-cart.yaml
 - assertVisible: "До Акцій"
-- takeScreenshot: screenshots/02-cart-flow
+- takeScreenshot: screenshots/mobile-02-cart-flow
